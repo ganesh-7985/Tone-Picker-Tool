@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { rewriteTone } from "./services/mistralService";
+import { rewriteTone } from "./services/mistralService.js";
 
 const router = Router();
 

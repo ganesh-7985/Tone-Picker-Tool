@@ -1,7 +1,16 @@
 import { Mistral } from '@mistralai/mistralai';
-import { cache } from './cacheService';
+import { cache } from './cacheService.js';
 
-const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
+let cachedClient = null;
+function getClient() {
+    if (cachedClient) return cachedClient;
+    const apiKey = (process.env.MISTRAL_API_KEY || '').trim();
+    if (!apiKey || apiKey.toLowerCase().includes('your_key')) {
+        throw new Error('MISTRAL_API_KEY is missing or invalid. Set it in backend/.env');
+    }
+    cachedClient = new Mistral({ apiKey });
+    return cachedClient;
+}
 
 function buildPrompt(text, axes) {
     const { formality, verbosity } = axes;
@@ -35,6 +44,7 @@ export async function rewriteTone(text,axes){
     if(cached) return cached;
 
     const prompt = buildPrompt(text,axes);
+    const client = getClient();
     const response = await client.chat.complete({
         model:"mistral-small-latest",
         messages:[
