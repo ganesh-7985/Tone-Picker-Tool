@@ -9,13 +9,14 @@ import useLocalStorage from './lib/useLocalStorage.js';
 import { createHistory, push, undo as doUndo, redo as doRedo, resetTo } from './lib/history.js';
 import { ENABLE_PREVIEW } from './config.ts';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { FileText, Sliders } from 'lucide-react';
+import { FileText, Sliders, Wand2 } from 'lucide-react';
+
 
 export default function App() {
-  const [saved, setSaved] = useLocalStorage('toneTool:v2', {
+  const [saved, setSaved] = useLocalStorage('toneTool:v3', {
     axesActiveId: null,
     lastAxes: null,
-    history: createHistory('Paste or type your text here, then use the tone picker on the right to adjust its style.')
+    history: createHistory('Welcome! Type or paste your text here, then use the tone matrix to transform it into different styles. Try the presets for quick adjustments or fine-tune with the grid.')
   });
 
   const [state, setState] = useState(saved.history);
@@ -27,6 +28,7 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState({ title: '', desc: '' });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewText, setPreviewText] = useState('');
+  const [activePreset, setActivePreset] = useState(null);
   const controllerRef = useRef(null);
 
   const canUndo = state.history.length > 0;
@@ -34,6 +36,7 @@ export default function App() {
   const currentText = state.current;
 
   useEffect(() => { setSaved({ axesActiveId, lastAxes, history: state }); }, [axesActiveId, lastAxes, state]);
+  
   useEffect(() => {
     const onKey = (e) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -90,106 +93,132 @@ export default function App() {
 
       const out = await callToneAPI(currentText, { formality: axesObj.formality, verbosity: axesObj.verbosity });
       setState(s => ({ ...s, current: out }));
-      if (!isFromShortcut) notify('✨ Tone applied', axesObj.id.replace('-', ' / '));
+      if (!isFromShortcut) notify('✨ Tone Applied', `Changed to ${axesObj.label || axesObj.id.replace('-', ' ')}`);
     } catch (e) {
       console.error(e);
       setError(e.message || 'Failed to change tone');
-      notify(' Error', e.message || 'Tone service failed');
-      setState(prev => prev); // no-op, optimistic revert handled if used
+      notify('Error', e.message || 'Tone service failed');
+      setState(prev => prev);
     } finally {
       setLoading(false);
     }
   }, [currentText, state]);
 
+  const applyPreset = useCallback((preset) => {
+    setActivePreset(preset.id);
+    const toneConfig = {
+      id: `${preset.formality}-${preset.verbosity}`,
+      formality: preset.formality,
+      verbosity: preset.verbosity,
+      label: preset.name
+    };
+    applyTone(toneConfig);
+  }, [applyTone]);
+
   const previewConfirmRef = useRef(() => {});
 
   function onChangeText(t) { setError(null); setState(s => ({ ...s, current: t })); }
-  function undo() { setState(s => doUndo(s)); }
-  function redo() { setState(s => doRedo(s)); }
+  function undo() { setState(s => doUndo(s)); notify('↩️ Undo', 'Previous version restored'); }
+  function redo() { setState(s => doRedo(s)); notify('↪️ Redo', 'Next version restored'); }
   function reset() {
     setAxesActiveId(null);
+    setActivePreset(null);
     setError(null);
     setState(s => resetTo(s, ''));
-    notify(' Reset', 'Editor cleared');
+    notify('🔄 Reset', 'Editor cleared');
   }
 
   return (
     <Tooltip.Provider delayDuration={200}>
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-50">
       <div className="mx-auto max-w-7xl p-6">
         {/* Header */}
         <header className="mb-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <Sliders className="w-6 h-6 text-indigo-600" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg">
+                <Wand2 className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Tone Picker</h1>
-                <p className="text-sm text-gray-600 mt-0.5">Transform your text with AI-powered tone adjustment</p>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                  Tone Transformer
+                </h1>
+                <p className="text-sm text-gray-600 mt-1">AI-powered text tone adjustment with Mistral</p>
               </div>
             </div>
           </div>
         </header>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Editor */}
-          <div className="flex flex-col">
-            <div className="mb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Text Editor</span>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Left: Editor (3 columns) */}
+          <div className="lg:col-span-3 flex flex-col">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Text Editor</span>
+              </div>
             </div>
             <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <Editor value={currentText} onChange={onChangeText} disabled={loading} />
             </div>
           </div>
 
-          {/* Right: Controls */}
-          <div className="flex flex-col">
+          {/* Right: Controls (2 columns) */}
+          <div className="lg:col-span-2 flex flex-col">
             <div className="mb-3 flex items-center gap-2">
               <Sliders className="w-4 h-4 text-gray-500" />
               <span className="text-sm font-medium text-gray-700">Tone Controls</span>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="space-y-6">
-                {/* Toolbar */}
-                <div className="pb-4 border-b border-gray-100">
-                  <Toolbar
-                    onUndo={undo}
-                    onRedo={redo}
-                    onReset={reset}
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                    disabled={loading}
-                    onApplyLast={() => lastAxes && applyTone(lastAxes, true)}
-                    hasLastTone={!!lastAxes}
+            
+            <div className="space-y-4">
+              {/* Presets */}
+
+              {/* Main Controls */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div className="space-y-5">
+                  {/* Toolbar */}
+                  <div className="pb-4 border-b border-gray-100">
+                    <Toolbar
+                      onUndo={undo}
+                      onRedo={redo}
+                      onReset={reset}
+                      canUndo={canUndo}
+                      canRedo={canRedo}
+                      disabled={loading}
+                      onApplyLast={() => lastAxes && applyTone(lastAxes, true)}
+                      hasLastTone={!!lastAxes}
+                    />
+                    {axesActiveId && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border border-indigo-200">
+                          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                          Last: <span className="font-medium">{axesActiveId.replace(/-/g, ' ')}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tone Matrix */}
+                  <ToneMatrix 
+                    onPick={applyTone} 
+                    disabled={loading} 
+                    activeId={axesActiveId} 
                   />
-                  {axesActiveId && (
-                    <div className="mt-3">
-                      <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border border-indigo-200">
-                        <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-                        Active: <span className="font-medium">{axesActiveId.replace('-', ' / ')}</span>
-                      </span>
+
+                  {/* Status Messages */}
+                  {loading && (
+                    <div className="flex justify-center p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                      <Spinner label="Transforming your text..." />
+                    </div>
+                  )}
+                  {error && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm flex items-start gap-2">
+                      <span className="text-red-500 mt-0.5">⚠</span>
+                      <span>{error}</span>
                     </div>
                   )}
                 </div>
-
-                {/* Tone Matrix */}
-                <ToneMatrix onPick={applyTone} disabled={loading} activeId={axesActiveId} />
-
-                {/* Status Messages */}
-                {loading && (
-                  <div className="flex justify-center p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                    <Spinner label="Applying tone transformation…" />
-                  </div>
-                )}
-                {error && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">⚠</span>
-                    <span>{error}</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -198,14 +227,20 @@ export default function App() {
         {/* Footer */}
         <footer className="mt-8 text-center">
           <div className="text-xs text-gray-500 space-y-1">
-            <p>💡 Keyboard shortcuts: <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Ctrl+Z</kbd> Undo • <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Ctrl+Y</kbd> Redo • <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Esc</kbd> Reset • <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Ctrl+Enter</kbd> Apply Last</p>
-            <p>Your work is automatically saved in your browser's local storage</p>
+            <p>
+              💡 Shortcuts: 
+              <kbd className="mx-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Ctrl+Z</kbd>Undo 
+              <kbd className="mx-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Ctrl+Y</kbd>Redo 
+              <kbd className="mx-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Esc</kbd>Reset 
+              <kbd className="mx-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">Ctrl+Enter</kbd>Apply Last
+            </p>
+            <p>Your work is automatically saved locally • Drag the matrix or use presets for quick adjustments</p>
           </div>
         </footer>
 
         <AppToast open={toastOpen} setOpen={setToastOpen} title={toastMsg.title} description={toastMsg.desc} />
 
-        {/* Conditional preview workflow */}
+        {/* Preview Dialog */}
         {ENABLE_PREVIEW && (
           <PreviewDialog
             open={previewOpen}
