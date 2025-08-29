@@ -1,12 +1,14 @@
 export default function Spinner({ label = 'Loading…' }) {
     return (
-      <div className="inline-flex items-center gap-2 text-sm text-gray-600">
-        <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l4-4-4-4v4a12 12 0 00-12 12h4z"></path>
-        </svg>
-        <span>{label}</span>
+      <div className="inline-flex items-center gap-3">
+        <div className="relative">
+          <div className="size-5">
+            <div className="absolute inset-0 rounded-full border-2 border-indigo-200"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin"></div>
+          </div>
+          <div className="absolute inset-0 rounded-full bg-indigo-100 animate-ping"></div>
+        </div>
+        <span className="text-sm text-gray-700 font-medium">{label}</span>
       </div>
     );
-}
-  
+  }
