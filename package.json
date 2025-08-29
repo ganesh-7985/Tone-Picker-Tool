@@ -1,0 +1,14 @@
+{
+  "name": "tone-picker-tool",
+  "private": true,
+  "workspaces":["frontend","backend"],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "npm run build -w backend && npm run build -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
