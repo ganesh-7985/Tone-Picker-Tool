@@ -79,12 +79,14 @@ export default function App() {
       verbosity: axes.verbosity || 'balanced'
     };
 
-    const res = await fetch('/api/tone', {
+    const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+    const res = await fetch(`${API_BASE}/tone`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: controllerRef.current.signal,
       body: JSON.stringify({ text, axes: apiAxes })
     });
+
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.error || 'Tone service error');
@@ -154,7 +156,7 @@ export default function App() {
     [currentText, state, ENABLE_PREVIEW]
   );
 
-  const previewConfirmRef = useRef(() => {});
+  const previewConfirmRef = useRef(() => { });
 
   function onChangeText(t) {
     setError(null);
@@ -194,7 +196,7 @@ export default function App() {
                     Tone Picker
                   </h1>
                   <p className="text-sm text-gray-600 mt-1">
-                    AI-powered text tone adjustment with Mistral 
+                    AI-powered text tone adjustment with Mistral
                   </p>
                 </div>
               </div>
@@ -288,7 +290,7 @@ export default function App() {
           <footer className="mt-8 text-center">
             <div className="text-xs text-gray-500 space-y-1">
               <p>
-                 Shortcuts:
+                Shortcuts:
                 <kbd className="mx-1 px-1.5 py-0.5 bg-gray-100 rounded text-gray-700">
                   Ctrl+Z
                 </kbd>
