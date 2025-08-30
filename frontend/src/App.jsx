@@ -89,14 +89,13 @@ export default function App() {
 
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || 'Tone service error');
+    if (!res.ok) throw new Error(data?.error || 'Server is waking up, please wait 30–60s and try again.');
     return data.text;
   }
 
   const applyTone = useCallback(
     async (axesObj, isFromShortcut = false) => {
       if (axesObj?.id === 'reset') {
-        // center cell = reset
         reset();
         return;
       }
