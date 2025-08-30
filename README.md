@@ -2,10 +2,6 @@
 
 A full‑stack app to rewrite text in different tones. Frontend (React + Vite + Tailwind v4) and Backend (Express). Uses Mistral API for rewriting.
 
-## Prerequisites
-- Node.js 18+ (Node 22 recommended)
-- npm 9+
-
 ## Quick Start
 ```bash
 # From the repo root

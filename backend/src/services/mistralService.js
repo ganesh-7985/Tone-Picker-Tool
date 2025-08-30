@@ -14,50 +14,86 @@ function getClient() {
 
 function buildPrompt(text, axes) {
     const { formality, verbosity } = axes;
-    const styleBits=[];
-    styleBits.push(formality=='formal'?'formal,professional':'casual, conversational');
-    styleBits.push(verbosity === 'concise' ? 'concise, succinct' : 'elaborate, detailed');
+    const styleBits = [];
+    
+    if (formality === 'formal') {
+        styleBits.push('formal, professional, business-appropriate');
+    } else if (formality === 'neutral') {
+        styleBits.push('neutral tone, balanced formality');
+    } else {
+        styleBits.push('casual, conversational, friendly');
+    }
+    
+
+    if (verbosity === 'concise') {
+        styleBits.push('concise, succinct, to-the-point');
+    } else if (verbosity === 'balanced') {
+        styleBits.push('balanced length, moderate detail');
+    } else {
+        styleBits.push('elaborate, detailed, comprehensive');
+    }
 
     const guidelines = [
-        `- Preserve original meaning.`,
-        `- Avoid adding facts.`,
-        `- Do not translate; keep the same language.`,
-        `- Keep formatting simple (no markdown tables).`
+        `- Preserve the original meaning and intent.`,
+        `- Do not add new facts or information.`,
+        `- Keep the same language (do not translate).`,
+        `- Maintain simple formatting (no markdown tables or complex structures).`,
+        `- Adjust the tone naturally without making it sound forced.`
     ].join('\n');
 
-    return `Rewrite the text in the requested tone.
-    Tone: 
-    -${styleBits.join(', ')}
+    return `Rewrite the following text in the requested tone and style.
+    
+Tone Requirements:
+- ${styleBits.join(', ')}
 
-    Rules:
-    ${guidelines}
+Guidelines:
+${guidelines}
 
-    Text:
-    """${text}"""
+Original Text:
+"""
+${text}
+"""
 
-    `;
+Rewritten Text:`;
 }
 
-export async function rewriteTone(text,axes){
-    const key  = JSON.stringify({text,axes});
+export async function rewriteTone(text, axes) {
+    const normalizedAxes = {
+        formality: axes.formality || 'neutral',
+        verbosity: axes.verbosity || 'balanced'
+    };
+    
+    const key = JSON.stringify({ text, axes: normalizedAxes });
     const cached = cache.get(key);
-    if(cached) return cached;
+    if (cached) return cached;
 
-    const prompt = buildPrompt(text,axes);
+    const prompt = buildPrompt(text, normalizedAxes);
     const client = getClient();
-    const response = await client.chat.complete({
-        model:"mistral-small-latest",
-        messages:[
-            { role: 'system', content: 'You are a helpful rewriting assistant focused on tone.' },
-            { role: 'user', content: prompt }
-        ],
-        temperature:0.4,
-        maxTokens:800
-    })
-    const output = response?.choices?.[0]?.message?.content?.trim();
-    if(!output) throw new Error('Empty response from Mistral')
+    
+    try {
+        const response = await client.chat.complete({
+            model: "mistral-small-latest",
+            messages: [
+                { 
+                    role: 'system', 
+                    content: 'You are a professional text rewriting assistant. You excel at adjusting the tone and style of text while preserving its core meaning. Always provide natural-sounding rewrites that match the requested tone.' 
+                },
+                { 
+                    role: 'user', 
+                    content: prompt 
+                }
+            ],
+            temperature: 0.4,
+            maxTokens: 1000
+        });
+        
+        const output = response?.choices?.[0]?.message?.content?.trim();
+        if (!output) throw new Error('Empty response from Mistral');
 
-    cache.set(key,output);
-    return output;
-
+        cache.set(key, output);
+        return output;
+    } catch (error) {
+        console.error('Mistral API error:', error);
+        throw new Error('Failed to rewrite text. Please try again.');
+    }
 }

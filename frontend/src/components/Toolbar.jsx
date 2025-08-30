@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { RotateCcw, RotateCw, RefreshCcw, Sparkles } from "lucide-react";
+import { RotateCcw, RotateCw, Sparkles } from "lucide-react";
 
 const IconBtn = ({ title, onClick, disabled, children }) => {
   return (
@@ -31,7 +31,6 @@ const IconBtn = ({ title, onClick, disabled, children }) => {
 export default function Toolbar({
   onUndo,
   onRedo,
-  onReset,
   canUndo,
   canRedo,
   disabled,
@@ -54,10 +53,6 @@ export default function Toolbar({
         disabled={!canRedo || disabled}
       >
         <RotateCw size={16} /> Redo
-      </IconBtn>
-
-      <IconBtn title="Reset (Esc)" onClick={onReset} disabled={disabled}>
-        <RefreshCcw size={16} /> Reset
       </IconBtn>
 
       <IconBtn
